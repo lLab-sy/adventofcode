@@ -1,7 +1,6 @@
 package Day12;
 
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -22,7 +21,7 @@ class Pair {
     }
 
     public List<Pair> getNeighbour(){
-        ArrayList<Pair> res = new ArrayList<Pair>();
+        ArrayList<Pair> res = new ArrayList<>();
         res.add(new Pair(x-1, y));
         res.add(new Pair(x, y-1));
         res.add(new Pair(x+1, y));
@@ -32,6 +31,110 @@ class Pair {
     
 }
 
+class Problem2 {
+    private static  int n, m;
+    private static int[][] regions;
+    private static Map<Integer, Integer> countSide, countReg;
+    
+
+    public Problem2(int[][] regions, int n, int m){
+        this.regions = regions;
+        this.n = n;
+        this.m = m;
+        Problem2.countSide = new LinkedHashMap<>();
+        Problem2.countReg = new LinkedHashMap<>();
+    }
+
+    private static void updateCount(int reg) {
+        if (countSide.get(reg) == null) {
+            countSide.put(reg, 0);
+        }
+        countSide.put(reg, countSide.get(reg)+1);
+    }
+
+    private static void updateCountReg(int reg) {
+        if (countReg.get(reg) == null) {
+            countReg.put(reg, 0);
+        }
+        countReg.put(reg, countReg.get(reg)+1);
+    }
+
+    public int solve() {
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < m; j++) {
+                int curReg = regions[i][j];
+                updateCountReg(curReg);
+                // vertical
+                // consider previos row
+                if (i == 0) {
+                    if (j == 0 || regions[i][j-1] != curReg){
+                        updateCount(curReg);
+                    }
+                } else {
+                    int prevRowReg = regions[i-1][j];
+                    if (prevRowReg != curReg){
+                        if (j == 0 || regions[i][j-1] != curReg || (regions[i-1][j-1] == curReg)) {
+                            updateCount(curReg);
+                        }
+                    }
+                }
+
+                // consider next row
+                if (i == n-1) {
+                    if (j == 0 || regions[i][j-1] != curReg){
+                        updateCount(curReg);
+                    }
+                } else {
+                    int nextRowReg = regions[i+1][j];
+                    if (nextRowReg != curReg) {
+                        if (j == 0 || regions[i][j-1] != curReg || (regions[i+1][j-1] == curReg)) {
+                            updateCount(curReg);
+                        }
+                    }
+                } 
+
+                // horizontal
+                // consider previous column
+                if (j == 0) {
+                    if (i == 0 || regions[i-1][j] != curReg) {
+                        updateCount(curReg);
+                    }
+                } else {
+                    int prevColReg = regions[i][j-1];
+                    if (prevColReg != curReg){
+                        if (i == 0 || regions[i-1][j] != curReg || (regions[i-1][j-1] == curReg)) {
+                            updateCount(curReg);
+                        }
+                    }
+                }
+
+                // consider next column
+                if (j == m-1){
+                    if (i == 0 || regions[i-1][j] != curReg) {
+                        updateCount(curReg);
+                    }
+                } else {
+                    int prevColReg = regions[i][j+1];
+                    if (prevColReg != curReg){
+                        if (i == 0 || regions[i-1][j] != curReg || (regions[i-1][j+1] == curReg)) {
+                            updateCount(curReg);
+                        }
+                    }
+                }
+            }
+        }
+
+        int res = 0;
+
+        for (int reg : countReg.keySet()) {
+            System.out.println(reg + " => count reg is " + countReg.get(reg) + " * " + countSide.get(reg));
+            res += countReg.get(reg) * countSide.get(reg);
+        }
+
+        return res;
+    }
+
+}
 public class Main {
     private static int bfs(char[][] lines, int sx, int sy, int n, int m){
         Queue<Pair> q = new  LinkedList<>();
@@ -69,13 +172,34 @@ public class Main {
             }
         }
 
-        // System.out.println(base + " => " + cnt + " and " + close);
         return cnt * close;
     }
     
+    private static void fillRegion(char[][] lines, int sx, int sy, int n, int m, int[][] regions, int k){
+        Queue<Pair> q = new  LinkedList<>();
+
+        char base = lines[sx][sy];
+        q.add(new Pair(sx, sy));
+
+        while (!q.isEmpty()) {
+            Pair cur = q.poll();
+            if (lines[cur.x][cur.y] == '-'){
+                continue;
+            }   
+            lines[cur.x][cur.y] = '-';
+            regions[cur.x][cur.y] = k;
+            for (Pair p: cur.getNeighbour()){
+                if (p.x < 0 || p.x >= n || p.y < 0 || p.y >= m || lines[p.x][p.y] == '-' || lines[p.x][p.y] != base) {
+                    continue;
+                }
+                q.add(p);
+            }
+        }
+
+    }
 
     public static void main(String[] args) {
-        List<String> lines = new ArrayList<String>();
+        List<String> lines = new ArrayList<>();
         try {
             // Define the path to the file
             Path filePath = Path.of("Day12/input.txt");
@@ -84,9 +208,9 @@ public class Main {
             lines = Files.readAllLines(filePath);
 
             // Print the array
-            for (String line : lines) {
-                System.out.println(line);
-            }
+            // for (String line : lines) {
+            //     System.out.println(line);
+            // }
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -100,31 +224,41 @@ public class Main {
             }
         }
         
-        int sum = 0;
+        // // begin sol1
+        // int sum = 0;
+        // for (int i = 0; i < n; i++) {
+        //     for (int j = 0; j < m; j++) {
+        //         if (charArr[i][j] != '+') {
+        //             sum += bfs(charArr, i, j, n, m);
+        //         }
+        //     }
+        // }
+        // // 1363682
+        // System.out.println("Ans of First question is  " + sum);
+        // // end sol1
+
+        // begin sol2
+        int[][] regions = new int[n][m];
+        int k = 0;
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < m; j++) {
-                if (charArr[i][j] != '+') {
-                    sum += bfs(charArr, i, j, n, m);
+                if (charArr[i][j] != '-') {
+                    fillRegion(charArr, i, j, n, m, regions, k);
+                    k += 1;
                 }
             }
         }
 
-        // for (int val : sumChar.values()) {
-        //     sum += val;
-        // }
-        // 1363682
-        System.out.println("Ans of First question is  " + sum);
+        Problem2 problem2Solver = new Problem2(regions, n, m);
+        System.out.println("And of Second question is " + problem2Solver.solve());
 
-        // solveInRow(lines);
-        // lines = listTranspose(lines);
-        // solveInRow(lines);
-        
-        // int sum = 0;
-        // for (char c : countChar.keySet()) {
-        //     sum = sum + countChar.get(c)*closeChar.get(c)/2;
-        //     System.out.println(c + " => " + (countChar.get(c)).toString() + " : " + closeChar.get(c));
+        // for (int i = 0; i < n; i++) {
+        //     for (int j = 0; j < m; j++) {
+        //         System.out.print(regions[i][j]);
+        //     }
+        //     System.out.println();
         // }
 
-        System.out.println(sum);
+        // end sol2
     }
 }
